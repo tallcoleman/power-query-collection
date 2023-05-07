@@ -16,21 +16,18 @@ let
     #"Grouped Records" = GroupByCategory(#"Source", {"OrderID"})
 in
     #"Grouped Records"
-
-/*
-OUTPUT:
-#table(
-    {"H_OrderID", "OrderID", "Item", "Price"},
-    {
-        {"1001", null, null, null},
-        {null, 1001, "Shampoo", 12},
-        {null, 1001, "Loofah", 20},
-        {null, null, null, null}
-        {"1002", null, null, null},
-        {null, 1002, "Shampoo", 12}
-    })
-*/
 ```
+
+### Output
+
+| H_OrderID | OrderID | Item    | Price |
+|-----------|---------|---------|-------|
+| 1001      |         |         |       |
+|           | 1001    | Shampoo | 12    |
+|           | 1001    | Loofah  | 20    |
+|           |         |         |       |
+| 1002      |         |         |       |
+|           | 1002    | Shampoo | 12    |
 
 ## To Do List
 
