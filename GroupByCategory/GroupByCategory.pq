@@ -6,7 +6,8 @@ Options record of any:
     HashFunctions Record of Functions
         - Value should be a function that returns a number from 0 to n - 1 where n is the number of unique values in GroupingColumn
         - Key should be GroupingColumn name to apply the function to
-        - Default is grouping column values sorted a-z
+        - Default is grouping column values sorted a-z as text
+        - Note that a custom function may be required for a grouping column with numerical values to sort properly since the values are sorted as text
 
     SummaryFunctions Record of Functions
         - Optional: will add a row under each section displaying a summary value based on the function specified for a particular column.
@@ -63,15 +64,16 @@ let
     SummaryFunctionLabels = Record.FieldOrDefault(Options, "SummaryFunctionLabels", true),
 
     // Hash Function (Default is sorted a-z ascending)
+    CategorySetText = List.Transform(CategorySet, each Text.From(_)),
     MatchTable = Record.FromList(
         List.Numbers(0, NumGroups), 
-        List.ReplaceValue(CategorySet, null, BlankGroupName, Replacer.ReplaceValue)
+        List.ReplaceValue(CategorySetText, null, BlankGroupName, Replacer.ReplaceValue)
         ),
-    DefaultHashFunction = (key) => Record.Field(MatchTable, key ?? BlankGroupName),
+    DefaultHashFunction = (key) => Record.Field(MatchTable, Text.From(key ?? BlankGroupName)),
     HashFunction = Record.FieldOrDefault(HashFunctions, GroupingColumn, DefaultHashFunction),
 
     // Heading title function
-    FormatHeading = (xText) => Text.Upper(xText ?? BlankGroupName),
+    FormatHeading = (xText) => Text.Upper(Text.From(xText ?? BlankGroupName)),
 
     // Create empty record ingredients
     FirstRecord = InputTable{0},
