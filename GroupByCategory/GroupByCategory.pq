@@ -61,7 +61,7 @@ let
     MaxLevelBlankRows = Record.FieldOrDefault(Options, "MaxLevelBlankRows", NumCategoryCols),
     BlankGroupName = Record.FieldOrDefault(Options, "BlankGroupName", "Blank"),
     ShowStyleIndex = Record.FieldOrDefault(Options, "ShowStyleIndex", true),
-    SummaryFunctionLabels = Record.FieldOrDefault(Options, "SummaryFunctionLabels", true),
+    SummaryFunctionLabels = Record.FieldOrDefault(Options, "SummaryFunctionLabels", if (SummaryFunctions <> []) then true else false),
 
     // Hash Function (Default is sorted a-z ascending)
     CategorySetText = List.Transform(CategorySet, each Text.From(_)),
@@ -136,10 +136,7 @@ let
         in
             NameSelection{0},
 
-    LabeledColumns = if (
-        SummaryFunctionLabels = true and 
-        SummaryFunctions <> []
-        ) then Record.FromList(
+    LabeledColumns = if (SummaryFunctionLabels = true) then Record.FromList(
         List.Transform(
             Record.ToList(SummaryFunctions), 
             each GetFunctionLabel(_)
