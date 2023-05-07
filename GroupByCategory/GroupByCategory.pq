@@ -3,23 +3,25 @@ GroupingColumns list of text
 
 Options record of any:
 
-    HashFunctions record of functions
+    HashFunctions Record of Functions
         - Value should be a function that returns a number from 0 to n - 1 where n is the number of unique values in GroupingColumn
         - Key should be GroupingColumn name to apply the function to
         - Default is grouping column values sorted a-z
 
-    SummaryFunctions record of functions
         - Whether to add summary functions can be controlled with OutlineLevel (TODO implement)
+    SummaryFunctions Record of Functions
 
-    HeadingStyle text
-        "Outline" (Default): TODO DESCRIBE
-        "Inline": TODO DESCRIBE
+    HeadingStyle Text
+        "Outline" (Default): 
+            - Places group headings in additional columns to the left. For example, with two grouping columns, Outline level 1 headings will be in column A, Outline level 2 headings will be in column B, and the source data will be in columns C+.
+        "Inline": 
+            - Places group headings in the first column of the source data.
 
-    MaxLevelBlankRows number
+    MaxLevelBlankRows Number
         - Maximum outline level for adding blank rows
         - Default is all outline levels
 
-    BlankGroupName text
+    BlankGroupName Text
         - Title to use for category rows that are blank (null)
         - Default is "Blank"
 
