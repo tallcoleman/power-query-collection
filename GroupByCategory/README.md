@@ -31,5 +31,6 @@ in
 
 ## To Do List
 
-[ ] add style index
-[ ] implement summary functions
+- [ ] additional options for where summary function explanations go (heading rows, append to value)
+- [ ] option to suppress summary functions by outline level
+- [ ] option to remove grouping columns from data

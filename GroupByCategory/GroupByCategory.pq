@@ -8,8 +8,12 @@ Options record of any:
         - Key should be GroupingColumn name to apply the function to
         - Default is grouping column values sorted a-z
 
-        - Whether to add summary functions can be controlled with OutlineLevel (TODO implement)
     SummaryFunctions Record of Functions
+        - Optional: will add a row under each section displaying a summary value based on the function specified for a particular column.
+        - Example: show subtotals for Column A
+        SummaryFunctions = [#"Column A" = List.Sum]
+        - Example: show average for Column B and count of Column C
+        SummaryFunctions = [#"Column B" = List.Average, #"Column C" = List.Count]
 
     HeadingStyle Text
         "Outline" (Default): 
@@ -24,6 +28,17 @@ Options record of any:
     BlankGroupName Text
         - Title to use for category rows that are blank (null)
         - Default is "Blank"
+
+    ShowStyleIndex Logical
+        - The Style Index is an additional leftmost column with values that can be used for conditional formatting. This column can be hidden or omitted from the print area.
+        true (Default): StyleIndex column shown
+        false: StyleIndex column not shown
+
+    SummaryFunctionLabels Record or Logical
+        - Adds a description row for summary functions (if specified)
+        true (Default): uses "Name" from Value.Metadata, or internal name for pre-defined functions such as List.Sum
+        false: no description row is shown
+        Record: custom labels, e.g. [#"Column A" = "Total"]
 
 */
 
@@ -40,10 +55,12 @@ let
     // Options
     Options = Options ?? [],
     HashFunctions = Record.FieldOrDefault(Options, "HashFunctions", null),
-    SummaryFunctions = Record.FieldOrDefault(Options, "SummaryFunctions", null),
+    SummaryFunctions = Record.FieldOrDefault(Options, "SummaryFunctions", []),
     HeadingStyle = Record.FieldOrDefault(Options, "HeadingStyle", "Outline"),
     MaxLevelBlankRows = Record.FieldOrDefault(Options, "MaxLevelBlankRows", NumCategoryCols),
     BlankGroupName = Record.FieldOrDefault(Options, "BlankGroupName", "Blank"),
+    ShowStyleIndex = Record.FieldOrDefault(Options, "ShowStyleIndex", true),
+    SummaryFunctionLabels = Record.FieldOrDefault(Options, "SummaryFunctionLabels", true),
 
     // Hash Function (Default is sorted a-z ascending)
     MatchTable = Record.FromList(
@@ -71,17 +88,19 @@ let
             AddHeadingCols = if (HeadingStyle = "Outline") then HeadingCols else [],
             AddBlank = (OutlineLevel <= MaxLevelBlankRows) and (Record.Field(xTable{0}, "_ID") <> FirstID)
         in
-            if (AddBlank) then Table.FromRecords({Record.Combine({AddHeadingCols, EmptyRecord})}) else #table({}, {}),
+            if (AddBlank) then Table.FromRecords({Record.Combine({[StyleIndex = "blank"], AddHeadingCols, EmptyRecord})}) else #table({}, {}),
         // add heading row
         let
             // Second record replaces value from <<HeadingName>> field of the first record
             HeadingRowOutline = Table.FromRecords({Record.Combine({
+                [StyleIndex = "Heading" & Text.From(OutlineLevel)],
                 HeadingCols, 
                 Record.FromList({FormatHeading(Record.Field(xTable{0}, GroupingColumn))}, {HeadingName}),
                 EmptyRecord
                 })}),
             // Second record replaces value from first field of the first record
             HeadingRowInline = Table.FromRecords({Record.Combine({
+                [StyleIndex = "Heading" & Text.From(OutlineLevel)],
                 EmptyRecord, 
                 Record.FromList({FormatHeading(Record.Field(xTable{0}, GroupingColumn))}, {EmptyKeys{0}})
                 })})
@@ -90,7 +109,48 @@ let
     }),
 
     // Set up summary row function for groups
-    SummaryRow = (xTable) => #table({}, {}), // placeholder
+    // For the Outline heading style, heading columns will be automatically added from the rows appended above
+    SummaryRow = (xTable) => 
+        let
+            SummaryRowVals = Table.AggregateTableColumn(
+                #table({"t"},{{xTable}}),
+                "t",
+                List.Transform(Table.ColumnNames(xTable), each {_, Record.FieldOrDefault(SummaryFunctions, _, (x) => null), _})
+                )
+        in
+            Table.AddColumn(SummaryRowVals, "StyleIndex", each "Summary" & Text.From(OutlineLevel)),
+    
+    // Summary Function Labels
+    // Get ResourceExpression Name or Metadata Name
+    GetFunctionLabel = (xFunction as function) => 
+        let
+            InternalName = Record.FieldOrDefault(Value.ResourceExpression(xFunction), "Name", null),
+            MeaningfulInternalName = if (Text.StartsWith(InternalName, "List.")) then Text.AfterDelimiter(InternalName, ".") else InternalName,
+            NameSelection = List.RemoveNulls({
+                Record.FieldOrDefault(Value.Metadata(xFunction), "Name", null),
+                MeaningfulInternalName,
+                "Custom" // failsafe
+                })
+        in
+            NameSelection{0},
+
+    LabeledColumns = if (
+        SummaryFunctionLabels = true and 
+        SummaryFunctions <> []
+        ) then Record.FromList(
+        List.Transform(
+            Record.ToList(SummaryFunctions), 
+            each GetFunctionLabel(_)
+            ), 
+        Record.FieldNames(SummaryFunctions)
+        ) else if (SummaryFunctionLabels is record) then SummaryFunctionLabels else [],
+
+    SummaryFunctionRow = Record.Combine({
+        [StyleIndex = "SummaryFunctionLabels"],
+        if (HeadingStyle = "Outline") then HeadingCols else [],
+        EmptyRecord,
+        LabeledColumns
+    }),
 
     // Check if last group
     LastGroup = OutlineLevel = NumCategoryCols,
@@ -101,8 +161,10 @@ let
     #"Added Headers" = List.Transform(#"Partitioned Table", each Table.Combine({
         GroupHeaders(_, FirstID),
         if (LastGroup) then _ else @GroupByCategory(_, GroupingColumns, Options, OutlineLevel + 1),
-        if (SummaryFunctions <> null) then SummaryRow(_) else #table({}, {})
+        if (SummaryFunctions <> []) then SummaryRow(_) else #table({}, {})
     })),
-    #"Recombined Tables" = Table.Combine(#"Added Headers")
+    #"Recombined Tables" = Table.Combine(#"Added Headers"),
+    #"Removed Internal Columns" = if (ShowStyleIndex = false) then Table.RemoveColumns(#"Recombined Tables", {"StyleIndex", "_ID"}) else Table.RemoveColumns(#"Recombined Tables", "_ID"),
+    #"Added Summary Function Label Row" = if (SummaryFunctionLabels <> false and OutlineLevel = 1) then Table.InsertRows(#"Removed Internal Columns", 0, {SummaryFunctionRow}) else #"Removed Internal Columns"
 in
-    #"Recombined Tables"
+    #"Added Summary Function Label Row"
