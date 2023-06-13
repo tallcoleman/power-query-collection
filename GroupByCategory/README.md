@@ -74,6 +74,7 @@ Built in functions have default labels (e.g. `List.Count` will be labeled "Count
 Adding a total for "Price" and a count for "Item":
 
 ```pq
+    ...
     #"Grouped Records" = GroupByCategory(
         #"Source", 
         {"OrderID"}, 
@@ -103,6 +104,7 @@ in
 Custom function and custom labels:
 
 ```pq
+    ...
     CountChars = (x as list) => List.Accumulate(x, 0, 
         (state, current) => state + Text.Length(Text.From(current))
         ),
