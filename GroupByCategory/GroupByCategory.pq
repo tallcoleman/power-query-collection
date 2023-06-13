@@ -10,11 +10,16 @@ Options record of any:
         - Null (blank) values generally get sorted to the top in a-z order; the label for null values is specified by the BlankGroupName option.
 
     SummaryFunctions record of functions
-        - Optional: will add a row under each section displaying a summary value based on the function specified for a particular column.
+        - Will add a row under each section displaying a summary value based on the function specified for a particular column.
         - Example: show subtotals for Column A
         SummaryFunctions = [#"Column A" = List.Sum]
         - Example: show average for Column B and count of Column C
         SummaryFunctions = [#"Column B" = List.Average, #"Column C" = List.Count]
+
+    SummaryFunctionLabels logical
+        - Adds a description row for summary functions (if specified)
+        true (Default): uses "Name" from Value.Metadata, or internal name for pre-defined functions such as List.Sum
+        false: no description row is shown
 
     HeadingStyle text
         "Outline" (Default): 
@@ -34,13 +39,6 @@ Options record of any:
         - The Style Index is an additional leftmost column with values that can be used for conditional formatting. This column can be hidden or omitted from the print area.
         true (Default): StyleIndex column shown
         false: StyleIndex column not shown
-
-    SummaryFunctionLabels logical
-        - Adds a description row for summary functions (if specified)
-        true (Default): uses "Name" from Value.Metadata, or internal name for pre-defined functions such as List.Sum
-        false: no description row is shown
-        Record: custom labels, e.g. [#"Column A" = "Total"]
-
 */
 
 (InputTable as table, GroupingColumns as list, optional Options as record, optional OutlineLevel as number) as table =>
@@ -142,7 +140,7 @@ let
             each GetFunctionLabel(_)
             ), 
         Record.FieldNames(SummaryFunctions)
-        ) else if (SummaryFunctionLabels is record) then SummaryFunctionLabels else [],
+        ) else [],
 
     SummaryFunctionRow = Record.Combine({
         [StyleIndex = "SummaryFunctionLabels"],
