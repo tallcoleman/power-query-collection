@@ -3,39 +3,39 @@ GroupingColumns list of text
 
 Options record of any:
 
-    HashFunctions Record of Functions
-        - Value should be a function that returns a number from 0 to n - 1 where n is the number of unique values in GroupingColumn
-        - Key should be GroupingColumn name to apply the function to
-        - Default is grouping column values sorted a-z as text
-        - Note that a custom function may be required for a grouping column with numerical values to sort properly since the values are sorted as text
+    GroupOrder record of lists
+        - Record key should be GroupingColumn name
+        - Record value should be a list of unique values within the GroupingColumn (i.e. a set) in the desired order of presentation
+        - Default is GroupingColumn values sorted a-z
+        - Null (blank) values generally get sorted to the top in a-z order; the label for null values is specified by the BlankGroupName option.
 
-    SummaryFunctions Record of Functions
+    SummaryFunctions record of functions
         - Optional: will add a row under each section displaying a summary value based on the function specified for a particular column.
         - Example: show subtotals for Column A
         SummaryFunctions = [#"Column A" = List.Sum]
         - Example: show average for Column B and count of Column C
         SummaryFunctions = [#"Column B" = List.Average, #"Column C" = List.Count]
 
-    HeadingStyle Text
+    HeadingStyle text
         "Outline" (Default): 
             - Places group headings in additional columns to the left. For example, with two grouping columns, Outline level 1 headings will be in column A, Outline level 2 headings will be in column B, and the source data will be in columns C+.
         "Inline": 
             - Places group headings in the first column of the source data.
 
-    MaxLevelBlankRows Number
+    MaxLevelBlankRows number
         - Maximum outline level for adding blank rows
         - Default is all outline levels
 
-    BlankGroupName Text
+    BlankGroupName text
         - Title to use for category rows that are blank (null)
         - Default is "Blank"
 
-    ShowStyleIndex Logical
+    ShowStyleIndex logical
         - The Style Index is an additional leftmost column with values that can be used for conditional formatting. This column can be hidden or omitted from the print area.
         true (Default): StyleIndex column shown
         false: StyleIndex column not shown
 
-    SummaryFunctionLabels Record or Logical
+    SummaryFunctionLabels logical
         - Adds a description row for summary functions (if specified)
         true (Default): uses "Name" from Value.Metadata, or internal name for pre-defined functions such as List.Sum
         false: no description row is shown
@@ -55,7 +55,7 @@ let
 
     // Options
     Options = Options ?? [],
-    HashFunctions = Record.FieldOrDefault(Options, "HashFunctions", null),
+    GroupOrder = Record.FieldOrDefault(Options, "GroupOrder", null),
     SummaryFunctions = Record.FieldOrDefault(Options, "SummaryFunctions", []),
     HeadingStyle = Record.FieldOrDefault(Options, "HeadingStyle", "Outline"),
     MaxLevelBlankRows = Record.FieldOrDefault(Options, "MaxLevelBlankRows", NumCategoryCols),
@@ -64,13 +64,13 @@ let
     SummaryFunctionLabels = Record.FieldOrDefault(Options, "SummaryFunctionLabels", if (SummaryFunctions <> []) then true else false),
 
     // Hash Function (Default is sorted a-z ascending)
-    CategorySetText = List.Transform(CategorySet, each Text.From(_)),
+    OrderedCategorySet = Record.FieldOrDefault(GroupOrder, GroupingColumn, CategorySet),
+    OrderedCategorySetText = List.Transform(OrderedCategorySet, each Text.From(_)),
     MatchTable = Record.FromList(
         List.Numbers(0, NumGroups), 
-        List.ReplaceValue(CategorySetText, null, BlankGroupName, Replacer.ReplaceValue)
+        List.ReplaceValue(OrderedCategorySetText, null, BlankGroupName, Replacer.ReplaceValue)
         ),
-    DefaultHashFunction = (key) => Record.Field(MatchTable, Text.From(key ?? BlankGroupName)),
-    HashFunction = Record.FieldOrDefault(HashFunctions, GroupingColumn, DefaultHashFunction),
+    HashFunction = (key) => Record.Field(MatchTable, Text.From(key ?? BlankGroupName)),
 
     // Heading title function
     FormatHeading = (xText) => Text.Upper(Text.From(xText ?? BlankGroupName)),
