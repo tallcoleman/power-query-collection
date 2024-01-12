@@ -4,6 +4,9 @@
 
 This function takes a table and groups it using the specified columns, similar to [grouped records in Airtable](https://support.airtable.com/docs/grouping-records-in-airtable) or a [grouped report in Microsoft Access](https://support.microsoft.com/en-us/office/create-a-grouped-or-summary-report-f23301a1-3e0a-4243-9002-4a23ac0fdbf3).
 
+See this [blog post with full step-by-step example](https://tallcoleman.me/programming/2023/06/13/grouped-reports-excel-power-query.html).
+
+
 ## Basic Usage
 
 ### Adding the function:
@@ -48,15 +51,29 @@ By default, values in the grouping column are sorted in ascending order. The `Gr
 
 Note that null (blank) values generally get sorted to the top in a-z order. The label for null values is specified by the BlankGroupName option.
 
-**Example:**
+**Example: Sort Descending**
 
 ```pq
     ...
-    OrderIDsDescending = List.Sort(List.Distinct(#"Source"[OrderID]), Order.Descending),
+    OrderIDsDescending = List.Sort(List.Distinct(#"Source"[Order ID]), Order.Descending),
     #"Grouped Records" = GroupByCategory(
         #"Source", 
-        {"OrderID"}, 
-        [GroupOrder = [OrderID = OrderIDsDescending]]
+        {"Order ID"}, 
+        [GroupOrder = [#"Order ID" = OrderIDsDescending]]
+        )
+in
+    #"Grouped Records"
+```
+
+**Example: Keep Order of Existing Data**
+
+```pq
+    ...
+    KeepOrder = List.Distinct(#"Source"[Order ID]),
+    #"Grouped Records" = GroupByCategory(
+        #"Source", 
+        {"Order ID"}, 
+        [GroupOrder = [#"Order ID" = KeepOrder]]
         )
 in
     #"Grouped Records"
